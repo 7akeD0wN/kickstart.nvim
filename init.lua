@@ -237,7 +237,21 @@ vim.opt.rtp:prepend(lazypath)
 --    :Lazy update
 --
 -- NOTE: Here is where you install your plugins.
+
 require('lazy').setup({
+  {
+    'stevearc/oil.nvim',
+    ---@module 'oil'
+    ---@type oil.SetupOpts
+    opts = {},
+    -- Optional dependencies
+    -- dependencies = { { 'echasnovski/mini.icons', opts = {} } },
+    dependencies = { 'nvim-tree/nvim-web-devicons' }, -- use if you prefer nvim-web-devicons
+    -- Lazy loading is not recommended because it is very tricky to make it work correctly in all situations.
+    lazy = false,
+  },
+  'brenoprata10/nvim-highlight-colors',
+  'nvim-treesitter/nvim-treesitter-textobjects',
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
@@ -676,6 +690,7 @@ require('lazy').setup({
         -- ts_ls = {},
         --
 
+        -- emmet_language_server = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -765,6 +780,7 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        html = { 'prettierd' },
       },
     },
   },
@@ -782,21 +798,21 @@ require('lazy').setup({
           -- Build Step is needed for regex support in snippets.
           -- This step is not supported in many windows environments.
           -- Remove the below condition to re-enable on windows.
-          if vim.fn.has 'win32' == 1 or vim.fn.executable 'make' == 0 then
-            return
-          end
+          --if vim.fn.has 'win32' == 1 or vim.fn.executable 'make' == 0 then
+          --return
+          --end
           return 'make install_jsregexp'
         end)(),
         dependencies = {
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
       },
@@ -842,13 +858,48 @@ require('lazy').setup({
       completion = {
         -- By default, you may press `<c-space>` to show the documentation.
         -- Optionally, set `auto_show = true` to show the documentation after a delay.
-        documentation = { auto_show = false, auto_show_delay_ms = 500 },
+        documentation = { auto_show = true, auto_show_delay_ms = 500 },
+        menu = {
+          draw = {
+            components = {
+              -- customize the drawing of kind icons
+              kind_icon = {
+                text = function(ctx)
+                  -- default kind icon
+                  local icon = ctx.kind_icon
+                  -- if LSP source, check for color derived from documentation
+                  if ctx.item.source_name == 'LSP' then
+                    local color_item = require('nvim-highlight-colors').format(ctx.item.documentation, { kind = ctx.kind })
+                    if color_item and color_item.abbr ~= '' then
+                      icon = color_item.abbr
+                    end
+                  end
+                  return icon .. ctx.icon_gap
+                end,
+                highlight = function(ctx)
+                  -- default highlight group
+                  local highlight = 'BlinkCmpKind' .. ctx.kind
+                  -- if LSP source, check for color derived from documentation
+                  if ctx.item.source_name == 'LSP' then
+                    local color_item = require('nvim-highlight-colors').format(ctx.item.documentation, { kind = ctx.kind })
+                    if color_item and color_item.abbr_hl_group then
+                      highlight = color_item.abbr_hl_group
+                    end
+                  end
+                  return highlight
+                end,
+              },
+            },
+          },
+        },
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        default = { 'lazydev', 'snippets', 'lsp', 'path' },
         providers = {
-          lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          lsp = { module = 'blink.cmp.sources.lsp', score_offset = 0 },
+          snippets = { module = 'blink.cmp.sources.snippets', score_offset = 10 },
+          lazydev = { module = 'lazydev.integrations.blink', score_offset = 1 },
         },
       },
 
@@ -861,7 +912,7 @@ require('lazy').setup({
       -- the rust implementation via `'prefer_rust_with_warning'`
       --
       -- See :h blink-cmp-config-fuzzy for more information
-      fuzzy = { implementation = 'lua' },
+      fuzzy = { implementation = 'prefer_rust_with_warning' },
 
       -- Shows a signature help window while you type arguments for a function
       signature = { enabled = true },
@@ -944,9 +995,9 @@ require('lazy').setup({
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
+        additional_vim_regex_highlighting = { 'ruby', 'html' },
       },
-      indent = { enable = true, disable = { 'ruby' } },
+      indent = { enable = true, disable = { 'ruby', 'html' } },
     },
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
@@ -976,7 +1027,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
